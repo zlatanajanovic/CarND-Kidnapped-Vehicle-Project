@@ -132,66 +132,74 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   http://planning.cs.uiuc.edu/node99.html
 		  
 		  
-	double std_x = std_landmark[0];
-	double std_y = std_landmark[1];
-	double weight_sum = 0.0;
+	double weight_sum = 0;
 
-	for (int i=0; i < num_particles; ++i){
-		Particle& particle_i = particles[i];
-		vector<LandmarkObs> predicted;
-		// loop trough landmarks
-		for (int i=0; i< map_landmarks.landmark_list.size(); ++i) { 
-			double landmark_x = map_landmarks.landmark_list[i].x_f;
-			double landmark_y = map_landmarks.landmark_list[i].y_f;
-			if (dist(particle_i.x, particle_i.y, landmark_x, landmark_y) < sensor_range) {
-				LandmarkObs landmark;
-				landmark.x = landmark_x;
-				landmark.y = landmark_y;
-				landmark.id = map_landmarks.landmark_list[i].id_i;
-				predicted.push_back(landmark);
-			}
+	for (int i=0; i<num_particles; ++i) {
+		double x = particles[i].x;
+		double y = particles[i].y;
+		double theta = particles[i].theta;
+
+		std::vector<LandmarkObs> predicted;
+		
+		// Calculate map_landmarks in vehicle's cooridnate assuming particle's state.
+		for (int j = 0; j < map_landmarks.landmark_list.size(); ++j) {
+			double m_x = map_landmarks.landmark_list[j].x_f;
+			double m_y = map_landmarks.landmark_list[j].y_f;
+
+			LandmarkObs landmark;
+			landmark.x = cos(-theta) * (m_x - x) - sin(-theta) * (m_y - y);
+			landmark.y = sin(-theta) * (m_x - x) + cos(-theta) * (m_y - y);
+			landmark.id = map_landmarks.landmark_list[j].id_i;
+			predicted.push_back(landmark);
 		}
-		// transformed observations for a particle
-		vector<LandmarkObs> transformed_obs;
-		for (int i=0; i< observations.size(); ++i) {
-			LandmarkObs obs; 
-			obs = observations[i];
-			LandmarkObs trans_obs;
-			trans_obs.x = cos(particle_i.theta) * obs.x - sin(particle_i.theta) * obs.y + particle_i.x;
-			trans_obs.y = sin(particle_i.theta) * obs.x + cos(particle_i.theta) * obs.y + particle_i.y;
 
-			transformed_obs.push_back(trans_obs);
-		  }
-		  dataAssociation(predicted, transformed_obs);
+		// Associate observation with map_landmark (estimated in vehicle coordinate).
+		dataAssociation(predicted, observations);
 
-		double particle_weight = 1.0;
+		std::vector<int> associations;
+		std::vector<double> sense_x;
+		std::vector<double> sense_y;
+		// Associate particle with each observation.
+		for (int j = 0; j < observations.size(); ++j) {
+			double o_x = observations[j].x;
+			double o_y = observations[j].y;
 
-		double landmark_x, landmark_y;
-		for (int i=0; i< transformed_obs.size(); ++i) {
-			// finding corresponding landmark
-			for (int i=0; i< predicted.size(); ++i) { 
-				if (transformed_obs[i].id == predicted[i].id) {
-					landmark_x = predicted[i].x;
-					landmark_y = predicted[i].y;
+			sense_x.push_back(cos(theta) * o_x - sin(theta) * o_y + x);
+			sense_y.push_back(sin(theta) * o_x + cos(theta) * o_y + y);
+			associations.push_back(observations[j].id);
+		}
+		particles[i] = SetAssociations(particles[i], associations, sense_x, sense_y);
+
+		// Calculate weight using multi-variate Gaussian probability.
+		particles[i].weight = 1.0;
+		for (int j = 0; j < observations.size(); ++j) {
+			double sig_x2 = std_landmark[0]*std_landmark[0];
+			double sig_y2 = std_landmark[1]*std_landmark[1];
+			double dx = 0, dy = 0;
+
+			// Search associated landmark and calculate difference.
+			for (int k = 0; k < predicted.size(); ++k) {
+				if (observations[j].id == predicted[k].id) {
+					dx = observations[j].x - predicted[k].x;
+					dy = observations[j].y - predicted[k].y;
 					break;
 				}
+				else if (k == predicted.size() - 1) {
+					cout << i << " " << j << " Association not found!" << endl;
+				}
 			}
-			double prob = exp( -( pow(transformed_obs[i].x - landmark_x, 2) / (2 * std_x * std_x) + pow(transformed_obs[i].y - landmark_y, 2) / (2 * std_y * std_y) ) );
 
-			particle_weight *= prob;
+			particles[i].weight *= exp(-0.5 * (1.0/sig_x2*dx*dx + 1.0/sig_y2*dy*dy))
+														/ sqrt(pow(2.0*M_PI,observations.size())*sig_x2*sig_y2);
+		}
 
-			particle_i.weight = particle_weight;
-		}
-		weights[i] = particle_i.weight;
-		weight_sum += particle_i.weight;
-	  }
-	  
-	// Normalize weights
-	if (weight_sum>0.001){
-		for (int i=0; i < num_particles; ++i){
-			Particle& particle_i = particles[i];
-			particle_i.weight /= weight_sum;
-		}
+		// cout << i << ", " << particles[i].weight << endl;
+
+		weight_sum += particles[i].weight;
+	}
+
+	for (int i = 0; i < num_particles; ++i) {
+		particles[i].weight /= weight_sum;
 	}	  
 }
 
