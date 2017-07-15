@@ -33,7 +33,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	std_theta = std[2];
 	 
 	// Number of particles
-	num_particles = 50;
+	num_particles = 100;
 	is_initialized = true;
 
 	// This line creates a normal (Gaussian) distribution for x, y and theta
