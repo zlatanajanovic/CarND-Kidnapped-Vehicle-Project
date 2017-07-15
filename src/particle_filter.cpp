@@ -132,9 +132,9 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   http://planning.cs.uiuc.edu/node99.html
 		  
 		  
-	double std_r = std_landmark[0];
-	double std_theta = std_landmark[1];
-	double norm_factor = 0.0;
+	double std_x = std_landmark[0];
+	double std_y = std_landmark[1];
+	double weight_sum = 0.0;
 
 	for (int i=0; i < num_particles; ++i){
 		Particle& particle_i = particles[i];
@@ -145,9 +145,9 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 			double landmark_y = map_landmarks.landmark_list[i].y_f;
 			if (dist(particle_i.x, particle_i.y, landmark_x, landmark_y) < sensor_range) {
 				LandmarkObs landmark;
-				landmark.x_f = landmark_x;
-				landmark.y_f = landmark_y;
-				landmark.id_i = map_landmarks.landmark_list[i].id_i
+				landmark.x = landmark_x;
+				landmark.y = landmark_y;
+				landmark.id = map_landmarks.landmark_list[i].id_i
 				predicted.push_back(landmark);
 			}
 		}
@@ -170,11 +170,9 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		for (int i=0; i< transformed_obs.size(); ++i) {
 			// finding corresponding landmark
 			for (int i=0; i< predicted.size(); ++i) { 
-				LandmarkObs landmark;
-				landmark = map_landmarks.landmark_list[i];
-				if (observations[i].id == landmark.id) {
-					landmark_x = landmark.x;
-					landmark_y = landmark.y;
+				if (observations[i].id == landmark_list[i].id) {
+					landmark_x = landmark_list[i].x;
+					landmark_y = landmark_list[i].y;
 					break;
 				}
 			}
@@ -185,14 +183,14 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 			particle_i.weight = particle_weight;
 		}
 		weights[i] = particle_i.weight;
-		norm_factor += particle_i.weight;
+		weight_sum += particle_i.weight;
 	  }
 	  
 	// Normalize weights
-	if (norm_factor>0.001){
+	if (weight_sum>0.001){
 		for (int i=0; i < num_particles; ++i){
 			Particle& particle_i = particles[i];
-			particle_i.weight /= norm_factor;
+			particle_i.weight /= weight_sum;
 		}
 	}	  
 }
