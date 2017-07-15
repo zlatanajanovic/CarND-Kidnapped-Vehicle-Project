@@ -189,8 +189,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 				}
 			}
 
-			particles[i].weight *= exp(-0.5 * (1.0/sig_x2*dx*dx + 1.0/sig_y2*dy*dy))
-														/ sqrt(pow(2.0*M_PI,observations.size())*sig_x2*sig_y2);
+			particles[i].weight *= exp(-0.5 * (dx*dx/sig_x2 + dy*dy/sig_y2));
 		}
 
 		// cout << i << ", " << particles[i].weight << endl;
