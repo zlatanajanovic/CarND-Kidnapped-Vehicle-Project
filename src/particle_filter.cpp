@@ -19,9 +19,6 @@
 
 using namespace std;
 
-random_device seed_gen;
-default_random_engine engine(seed_gen());
-
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	// Set the number of particles. Initialize all particles to first position (based on estimates of 
 	//   x, y, theta and their uncertainties from GPS) and all weights to 1. 
@@ -146,14 +143,15 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		
 		// Calculate map_landmarks in vehicle's cooridnate assuming particle's state.
 		for (int j = 0; j < map_landmarks.landmark_list.size(); ++j) {
-			double m_x = map_landmarks.landmark_list[j].x_f;
-			double m_y = map_landmarks.landmark_list[j].y_f;
-
-			LandmarkObs landmark;
-			landmark.x = cos(-theta) * (m_x - x) - sin(-theta) * (m_y - y);
-			landmark.y = sin(-theta) * (m_x - x) + cos(-theta) * (m_y - y);
-			landmark.id = map_landmarks.landmark_list[j].id_i;
-			predicted.push_back(landmark);
+			double landmark_x = map_landmarks.landmark_list[j].x_f;
+			double landmark_y = map_landmarks.landmark_list[j].y_f;
+			if (dist(x, y, landmark_x, landmark_y) < sensor_range) {
+				LandmarkObs landmark;
+				landmark.x = cos(-theta) * (landmark_x - x) - sin(-theta) * (landmark_y - y);
+				landmark.y = sin(-theta) * (landmark_x - x) + cos(-theta) * (landmark_y - y);
+				landmark.id = map_landmarks.landmark_list[j].id_i;
+				predicted.push_back(landmark);
+			}
 		}
 
 		// Associate observation with map_landmark (estimated in vehicle coordinate).
@@ -173,7 +171,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		}
 		particles[i] = SetAssociations(particles[i], associations, sense_x, sense_y);
 
-		// Calculate weight using multi-variate Gaussian probability.
+		// Calculate weights.
 		particles[i].weight = 1.0;
 		for (int j = 0; j < observations.size(); ++j) {
 			double sig_x2 = std_landmark[0]*std_landmark[0];
@@ -209,17 +207,8 @@ void ParticleFilter::resample() {
 	// Resample particles with replacement with probability proportional to their weight. 
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
-	/* std::random_device rd;
-	std::mt19937 gen(rd());
-	std::discrete_distribution<> d(weights.begin(), weights.end());
-	vector<Particle> particles_res(num_particles);
-
-	for (int i=0; i < num_particles; ++i) {
-		particles_res[i] = particles[d(gen)];
-	}
-
-	// Assigning resampled particles
-	particles = particles_res; */
+		
+	default_random_engine gen
 	
 	for (int i = 0; i < weights.size(); ++i) {
 		weights[i] = particles[i].weight;
@@ -233,7 +222,7 @@ void ParticleFilter::resample() {
 
 	// Resample according to weights
 	for (int i = 0; i < particles.size(); ++i) {
-		particles[i] = old_particles[dist(engine)];
+		particles[i] = old_particles[dist(gen)];
 	}
 	
 }
