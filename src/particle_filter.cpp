@@ -141,9 +141,13 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		vector<LandmarkObs> predicted;
 		// loop trough landmarks
 		for (int i=0; i< map_landmarks.landmark_list.size(); ++i) { 
-			LandmarkObs landmark;
-			landmark = map_landmarks.landmark_list[i];
-			if (dist(particle_i.x, particle_i.y, landmark.x_f, landmark.y_f) < sensor_range) {
+			double landmark_x = map_landmarks.landmark_list[i].x_f;
+			double landmark_y = map_landmarks.landmark_list[i].y_f;
+			if (dist(particle_i.x, particle_i.y, landmark_x, landmark_y) < sensor_range) {
+				LandmarkObs landmark;
+				landmark.x_f = landmark_x;
+				landmark.y_f = landmark_y;
+				landmark.id_i = map_landmarks.landmark_list[i].id_i
 				predicted.push_back(landmark);
 			}
 		}
@@ -164,19 +168,17 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
 		double landmark_x, landmark_y;
 		for (int i=0; i< transformed_obs.size(); ++i) {
-			LandmarkObs obs;
-			obs = observations[i];
 			// finding corresponding landmark
 			for (int i=0; i< predicted.size(); ++i) { 
 				LandmarkObs landmark;
 				landmark = map_landmarks.landmark_list[i];
-				if (obs.id == landmark.id) {
+				if (observations[i].id == landmark.id) {
 					landmark_x = landmark.x;
 					landmark_y = landmark.y;
 					break;
 				}
 			}
-			double prob = exp( -( pow(obs.x - landmark_x, 2) / (2 * std_x * std_x) + pow(obs.y - landmark_y, 2) / (2 * std_y * std_y) ) );
+			double prob = exp( -( pow(observations[i].x - landmark_x, 2) / (2 * std_x * std_x) + pow(observations[i].y - landmark_y, 2) / (2 * std_y * std_y) ) );
 
 			particle_weight *= prob;
 
@@ -202,10 +204,10 @@ void ParticleFilter::resample() {
 	std::random_device rd;
 	std::mt19937 gen(rd());
 	std::discrete_distribution<> d(weights.begin(), weights.end());
-	vector<Particle> particles_res[num_particles];
+	vector<Particle> particles_res(num_particles);
 
-	for (int n=0; n < num_particles; ++n) {
-		particles_res[n] = particles[d(gen)];
+	for (int i=0; i < num_particles; ++i) {
+		particles_res[i] = particles[d(gen)];
 	}
 
 	// Assigning resampled particles
