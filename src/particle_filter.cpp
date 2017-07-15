@@ -147,7 +147,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 				LandmarkObs landmark;
 				landmark.x = landmark_x;
 				landmark.y = landmark_y;
-				landmark.id = map_landmarks.landmark_list[i].id_i
+				landmark.id = map_landmarks.landmark_list[i].id_i;
 				predicted.push_back(landmark);
 			}
 		}
@@ -170,13 +170,13 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		for (int i=0; i< transformed_obs.size(); ++i) {
 			// finding corresponding landmark
 			for (int i=0; i< predicted.size(); ++i) { 
-				if (observations[i].id == landmark_list[i].id) {
-					landmark_x = landmark_list[i].x;
-					landmark_y = landmark_list[i].y;
+				if (transformed_obs[i].id == predicted[i].id) {
+					landmark_x = predicted[i].x;
+					landmark_y = predicted[i].y;
 					break;
 				}
 			}
-			double prob = exp( -( pow(observations[i].x - landmark_x, 2) / (2 * std_x * std_x) + pow(observations[i].y - landmark_y, 2) / (2 * std_y * std_y) ) );
+			double prob = exp( -( pow(transformed_obs[i].x - landmark_x, 2) / (2 * std_x * std_x) + pow(transformed_obs[i].y - landmark_y, 2) / (2 * std_y * std_y) ) );
 
 			particle_weight *= prob;
 
