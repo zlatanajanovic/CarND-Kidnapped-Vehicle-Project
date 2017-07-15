@@ -141,7 +141,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		vector<LandmarkObs> predicted;
 		// loop trough landmarks
 		for (int i=0; i< map_landmarks.landmark_list.size(); ++i) { 
-			LandmarkObs landmark = map_landmarks.landmark_list[i];
+			LandmarkObs landmark;
+			landmark = map_landmarks.landmark_list[i];
 			if (dist(particle_i.x, particle_i.y, landmark.x_f, landmark.y_f) < sensor_range) {
 				predicted.push_back(landmark);
 			}
@@ -149,7 +150,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		// transformed observations for a particle
 		vector<LandmarkObs> transformed_obs;
 		for (int i=0; i< observations.size(); ++i) {
-			LandmarkObs obs = observations[i];
+			LandmarkObs obs; 
+			obs = observations[i];
 			LandmarkObs trans_obs;
 			trans_obs.x = cos(particle_i.theta) * obs.x - sin(particle_i.theta) * obs.y + particle_i.x;
 			trans_obs.y = sin(particle_i.theta) * obs.x + cos(particle_i.theta) * obs.y + particle_i.y;
@@ -162,10 +164,12 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
 		double landmark_x, landmark_y;
 		for (int i=0; i< transformed_obs.size(); ++i) {
-			LandmarkObs obs = observations[i];
+			LandmarkObs obs;
+			obs = observations[i];
 			// finding corresponding landmark
 			for (int i=0; i< predicted.size(); ++i) { 
-				LandmarkObs landmark = map_landmarks.landmark_list[i];
+				LandmarkObs landmark;
+				landmark = map_landmarks.landmark_list[i];
 				if (obs.id == landmark.id) {
 					landmark_x = landmark.x;
 					landmark_y = landmark.y;
