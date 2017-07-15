@@ -141,10 +141,11 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
 		std::vector<LandmarkObs> predicted;
 		
-		// Calculate map_landmarks in vehicle's cooridnate assuming particle's state.
+		// Predict map_landmarks in particle's frame
 		for (int j = 0; j < map_landmarks.landmark_list.size(); ++j) {
 			double landmark_x = map_landmarks.landmark_list[j].x_f;
 			double landmark_y = map_landmarks.landmark_list[j].y_f;
+			// if landmark is in the range
 			if (dist(x, y, landmark_x, landmark_y) < sensor_range) {
 				LandmarkObs landmark;
 				landmark.x = cos(-theta) * (landmark_x - x) - sin(-theta) * (landmark_y - y);
@@ -154,39 +155,37 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 			}
 		}
 
-		// Associate observation with map_landmark (estimated in vehicle coordinate).
+		// Associate observation with predicted landmarks
 		dataAssociation(predicted, observations);
 
 		std::vector<int> associations;
 		std::vector<double> sense_x;
 		std::vector<double> sense_y;
-		// Associate particle with each observation.
+		
+		// Set assignments to particle
 		for (int j = 0; j < observations.size(); ++j) {
-			double o_x = observations[j].x;
-			double o_y = observations[j].y;
+			double obs_x = observations[j].x;
+			double obs_y = observations[j].y;
 
-			sense_x.push_back(cos(theta) * o_x - sin(theta) * o_y + x);
-			sense_y.push_back(sin(theta) * o_x + cos(theta) * o_y + y);
+			sense_x.push_back(cos(theta) * obs_x - sin(theta) * obs_y + x);
+			sense_y.push_back(sin(theta) * obs_x + cos(theta) * obs_y + y);
 			associations.push_back(observations[j].id);
 		}
 		particles[i] = SetAssociations(particles[i], associations, sense_x, sense_y);
 
-		// Calculate weights.
+		// Calculate weights
 		particles[i].weight = 1.0;
 		for (int j = 0; j < observations.size(); ++j) {
 			double sig_x2 = std_landmark[0]*std_landmark[0];
 			double sig_y2 = std_landmark[1]*std_landmark[1];
 			double dx = 0, dy = 0;
 
-			// Search associated landmark and calculate difference.
+			// Search associated landmark and calculate difference
 			for (int k = 0; k < predicted.size(); ++k) {
 				if (observations[j].id == predicted[k].id) {
 					dx = observations[j].x - predicted[k].x;
 					dy = observations[j].y - predicted[k].y;
 					break;
-				}
-				else if (k == predicted.size() - 1) {
-					cout << i << " " << j << " Association not found!" << endl;
 				}
 			}
 
@@ -194,14 +193,13 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 			particles[i].weight *= exp(-0.5 * (dy*dy/sig_y2 ))/sqrt(2*M_PI * sig_y2);
 		}
 
-		// cout << i << ", " << particles[i].weight << endl;
-
 		weight_sum += particles[i].weight;
 	}
-
-	for (int i = 0; i < num_particles; ++i) {
-		particles[i].weight /= weight_sum;
-	}	  
+	if (weight_sum>0.001) {
+		for (int i = 0; i < num_particles; ++i) {
+			particles[i].weight /= weight_sum;
+		}	  
+	}
 }
 
 void ParticleFilter::resample() {
@@ -209,22 +207,16 @@ void ParticleFilter::resample() {
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
 		
-	default_random_engine gen;
-	
-	for (int i = 0; i < weights.size(); ++i) {
-		weights[i] = particles[i].weight;
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::discrete_distribution<> d(weights.begin(), weights.end());
+	vector<Particle> particles_res(num_particles);
+
+	for (int n=0; n < num_particles; ++n) {
+		particles_res[n] = particles[d(gen)];
 	}
-
-	discrete_distribution<> dist(weights.begin(), weights.end());
-
-	// Copy current particles
-	std::vector<Particle> old_particles;
-	copy(particles.begin(), particles.end(), back_inserter(old_particles));
-
-	// Resample according to weights
-	for (int i = 0; i < particles.size(); ++i) {
-		particles[i] = old_particles[dist(gen)];
-	}
+	// Assigning re-sampled particles
+	particles = particles_res;
 	
 }
 
