@@ -209,7 +209,7 @@ void ParticleFilter::resample() {
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
 		
-	default_random_engine gen
+	default_random_engine gen;
 	
 	for (int i = 0; i < weights.size(); ++i) {
 		weights[i] = particles[i].weight;
